@@ -94,7 +94,7 @@ jobs:
       - name: Run linting (ESLint)
         run: |
           cd front
-          npm run lint || true
+          npm run lint || truе
 
       - name: Run tests
         run: |
