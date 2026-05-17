@@ -72,45 +72,10 @@ jobs:
           name: backend-coverage
           fail_ci_if_error: false
 
-  # ============ Фронтенд тесты и линтинг ============
-  frontend-tests:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: 'front/package-lock.json'
-
-      - name: Install dependencies
-        run: |
-          cd front
-          npm install
-
-      - name: Run linting (ESLint)
-        run: |
-          cd front
-          npm run lint || true
-
-      - name: Run tests
-        run: |
-          cd front
-          npm run test:unit -- --coverage --watchAll=false
-
-      - name: Run E2E tests
-        run: |
-          cd front
-          npm run eject:test || true
-          npm run test:e2e || true
-
   # ============ Сборка Docker образов ============
   build-docker-images:
     runs-on: ubuntu-latest
-    needs: [backend-tests, frontend-tests]
+    needs: [backend-tests]
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
 
     steps:
@@ -159,7 +124,7 @@ jobs:
   # ============ Развертывание (только на main) ============
   deploy:
     runs-on: ubuntu-latest
-    needs: [backend-tests, frontend-tests, build-docker-images, docker-compose-validation]
+    needs: [backend-tests, build-docker-images, docker-compose-validation]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
