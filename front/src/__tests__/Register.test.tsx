@@ -5,11 +5,11 @@ import Register from '../register/Register';
 import { MemoryRouter } from 'react-router-dom';
 
 const mockLogin = jest.fn();
-const navigateMock = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   ...(require('react-router-dom') as object),
-  useNavigate: () => navigateMock,
+  useNavigate: () => mockNavigate,
 }));
 
 jest.mock('../AuthContext.tsx', () => ({
