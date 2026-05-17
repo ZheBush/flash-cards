@@ -5,11 +5,11 @@ import Cards from '../cards/Cards';
 import { MemoryRouter } from 'react-router-dom';
 import * as authModule from '../AuthContext.tsx';
 
-const navigateMock = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   ...(require('react-router-dom') as object),
-  useNavigate: () => navigateMock,
+  useNavigate: () => mockNavigate,
   useLocation: () => ({ pathname: '/cards' }),
 }));
 
@@ -49,7 +49,7 @@ describe('Cards component', () => {
       </MemoryRouter>
     );
 
-    expect(navigateMock).toHaveBeenCalledWith('/login');
+    expect(mockNavigate).toHaveBeenCalledWith('/login');
   });
 
   it('renders cards container for authenticated user', () => {
@@ -65,7 +65,7 @@ describe('Cards component', () => {
     );
 
     // Component should render without redirecting
-    expect(navigateMock).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it('handles API errors when fetching cards', async () => {

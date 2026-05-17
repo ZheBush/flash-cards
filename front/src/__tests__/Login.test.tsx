@@ -4,7 +4,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Login from '../login/Login';
 import { MemoryRouter } from 'react-router-dom';
 
-const loginMock = jest.fn();
+const mockLogin = jest.fn();
 const createGuestSessionMock = jest.fn();
 const navigateMock = jest.fn();
 
@@ -15,7 +15,7 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../AuthContext.tsx', () => ({
   useAuth: () => ({
-    login: loginMock,
+    login: mockLogin,
     createGuestSession: createGuestSessionMock,
   }),
 }));
@@ -52,7 +52,7 @@ describe('Login component', () => {
     fireEvent.click(screen.getByRole('button', { name: /log in/i }));
 
     expect(await screen.findByText(/Incorrect email/i)).toBeInTheDocument();
-    expect(loginMock).not.toHaveBeenCalled();
+    expect(mockLogin).not.toHaveBeenCalled();
   });
 
   it('calls login and stores access token on successful submit', async () => {
@@ -80,7 +80,7 @@ describe('Login component', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /log in/i }));
 
-    await waitFor(() => expect(loginMock).toHaveBeenCalledWith(
+    await waitFor(() => expect(mockLogin).toHaveBeenCalledWith(
       expect.objectContaining({
         email: 'user@example.com',
         token: 'token-123',

@@ -4,7 +4,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Register from '../register/Register';
 import { MemoryRouter } from 'react-router-dom';
 
-const loginMock = jest.fn();
+const mockLogin = jest.fn();
 const navigateMock = jest.fn();
 
 jest.mock('react-router-dom', () => ({
@@ -14,7 +14,7 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../AuthContext.tsx', () => ({
   useAuth: () => ({
-    login: loginMock,
+    login: mockLogin,
   }),
 }));
 
@@ -56,7 +56,7 @@ describe('Register component', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /register/i }));
     expect(await screen.findByText(/Passwords do not match/i)).toBeInTheDocument();
-    expect(loginMock).not.toHaveBeenCalled();
+    expect(mockLogin).not.toHaveBeenCalled();
   });
 
   it('validates email format before submitting', async () => {
@@ -134,7 +134,7 @@ describe('Register component', () => {
     fireEvent.click(screen.getByRole('button', { name: /register/i }));
 
     await waitFor(() => {
-      expect(loginMock).toHaveBeenCalled();
+      expect(mockLogin).toHaveBeenCalled();
     });
   });
 
