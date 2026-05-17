@@ -1,0 +1,14 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+# Копируем всё остальное
+COPY . .
+
+EXPOSE 3001
+
+# Запускаем React в режиме разработки
+CMD ["npm", "start"]

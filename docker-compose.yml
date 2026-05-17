@@ -1,0 +1,141 @@
+services:
+  # ============ База данных ============
+  db:
+    image: postgres:16
+    container_name: cards-db
+    restart: always
+    ports:
+      - "${DB_PORT_EXPOSE}:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  # ============ MinIO (S3-совместимое хранилище) ============
+  minio:
+    image: minio/minio:latest
+    container_name: cards-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    ports:
+      - "${MINIO_API_PORT}:9000"
+      - "${MINIO_CONSOLE_PORT}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  # ============ Инициализация MinIO (создание buckets) ============
+  minio-init:
+    image: minio/mc:latest
+    container_name: cards-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
+      mc mb myminio/${S3_BUCKET} --ignore-existing &&
+      mc anonymous set download myminio/${S3_BUCKET}
+      "
+    restart: "no"
+    networks:
+      - app-network
+
+  # ============ Бэкенд (FastAPI) ============
+  backend:
+    build:
+      context: ./back
+      dockerfile: dockerfile
+    container_name: cards-backend
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
+      - SECRET_KEY=${BACKEND_SECRET_KEY}
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_ENDPOINT=${S3_ENDPOINT}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
+      - S3_REGION=${S3_REGION}
+      - WEATHER_API_KEY=${WEATHER_API_KEY}
+      - WEATHER_API_URL=${WEATHER_API_URL}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+    command: >
+      bash -c "sleep 5 && alembic upgrade head && python -m app.main"
+    ports:
+      - "${BACKEND_PORT}:8000"
+    volumes:
+      - ./back/app:/app/app
+      - ./back/alembic:/app/alembic
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/openapi.json" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    networks:
+      - app-network
+
+  # ============ Ollama (AI) ============
+  ollama:
+    image: ollama/ollama
+    container_name: cards-ai
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - app-network
+
+  # ============ Фронтенд (React/CRA) ============
+  frontend:
+    build:
+      context: ./front
+      dockerfile: dockerfile
+    container_name: cards-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT}:3001"
+    environment:
+      - REACT_APP_API_URL=${REACT_APP_API_URL}
+      - REACT_APP_OLLAMA_URL=${REACT_APP_OLLAMA_URL}
+      - PORT=3001
+    depends_on:
+      - backend
+    volumes:
+      - ./front/src:/app/src
+      - ./front/public:/app/public
+      - /app/node_modules  # Исключаем node_modules из монтирования
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+  ollama_data:
+  minio_data:
+
+networks:
+  app-network:
+    driver: bridge
